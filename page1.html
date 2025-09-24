@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Personal Finance Management</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 600px;
+      margin: 20px auto;
+      padding: 10px;
+    }
+    h2 {
+      text-align: center;
+    }
+    label {
+      display: block;
+      margin-top: 10px;
+    }
+    input, select, button {
+      margin-top: 5px;
+      padding: 5px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    #summary {
+      margin-top: 20px;
+      border-top: 1px solid #ccc;
+      padding-top: 15px;
+    }
+    canvas {
+      margin-top: 20px;
+    }
+    .goal-section {
+      margin-top: 30px;
+      padding-top: 15px;
+      border-top: 1px solid #ccc;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Personal Finance Management</h2>
+
+  <!-- Income and Expense Input -->
+  <form id="financeForm">
+    <label>Type:
+      <select id="type" required>
+        <option value="income">Income</option>
+        <option value="expense">Expense</option>
+      </select>
+    </label>
+
+    <label>Description:
+      <input type="text" id="description" placeholder="e.g., Salary, Groceries" required />
+    </label>
+
+    <label>Amount:
+      <input type="number" id="amount" min="0.01" step="0.01" placeholder="0.00" required />
+    </label>
+
+    <button type="submit">Add Entry</button>
+  </form>
+
+  <!-- Summary -->
+  <div id="summary">
+    <h3>Summary</h3>
+    <p>Total Income: $<span id="totalIncome">0.00</span></p>
+    <p>Total Expenses: $<span id="totalExpenses">0.00</span></p>
+    <p>Balance: $<span id="balance">0.00</span></p>
+  </div>
+
+  <!-- Chart -->
+  <canvas id="expenseChart" width="400" height="300"></canvas>
+
+  <!-- Savings Goal Tracker -->
+  <div class="goal-section">
+    <h3>Savings Goal Tracker</h3>
+
+    <label>Goal Amount:
+      <input type="number" id="goalAmount" min="0.01" step="0.01" placeholder="Enter goal amount" />
+    </label>
+
+    <label>Current Savings:
+      <input type="number" id="currentSavings" min="0" step="0.01" placeholder="Enter current savings" />
+    </label>
+
+    <button id="checkGoal">Check Progress</button>
+
+    <p id="goalStatus"></p>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    const financeForm = document.getElementById('financeForm');
+    const typeInput = document.getElementById('type');
+    const descriptionInput = document.getElementById('description');
+    const amountInput = document.getElementById('amount');
+
+    const totalIncomeEl = document.getElementById('totalIncome');
+    const totalExpensesEl = document.getElementById('totalExpenses');
+    const balanceEl = document.getElementById('balance');
+
+    const goalAmountInput = document.getElementById('goalAmount');
+    const currentSavingsInput = document.getElementById('currentSavings');
+    const checkGoalBtn = document.getElementById('checkGoal');
+    const goalStatus = document.getElementById('goalStatus');
+
+    let entries = [];
+
+    // Initialize Chart.js pie chart for expenses
+    const ctx = document.getElementById('expenseChart').getContext('2d');
+    let expenseChart = new Chart(ctx, {
+      type: 'pie',
+      data: {
+        labels: [],
+        datasets: [{
+          label: 'Expenses',
+          data: [],
+          backgroundColor: []
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: {
+            position: 'bottom',
+          }
+        }
+      }
+    });
+
+    function updateSummary() {
+      let income = 0;
+      let expenses = 0;
+      let expenseCategories = {};
+
+      for (const entry of entries) {
+        if (entry.type === 'income') {
+          income += entry.amount;
+        } else {
+          expenses += entry.amount;
+          // accumulate expense per description for chart
+          expenseCategories[entry.description] = (expenseCategories[entry.description] || 0) + entry.amount;
+        }
+      }
+
+      totalIncomeEl.textContent = income.toFixed(2);
+      totalExpensesEl.textContent = expenses.toFixed(2);
+      balanceEl.textContent = (income - expenses).toFixed(2);
+
+      // Update expense chart
+      expenseChart.data.labels = Object.keys(expenseCategories);
+      expenseChart.data.datasets[0].data = Object.values(expenseCategories);
+
+      // Generate random pastel colors for chart segments
+      expenseChart.data.datasets[0].backgroundColor = expenseChart.data.labels.map(() => {
+        const r = Math.floor(150 + Math.random() * 100);
+        const g = Math.floor(150 + Math.random() * 100);
+        const b = Math.floor(150 + Math.random() * 100);
+        return `rgb(${r},${g},${b})`;
+      });
+
+      expenseChart.update();
+    }
+
+    financeForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+
+      const type = typeInput.value;
+      const description = descriptionInput.value.trim();
+      const amount = parseFloat(amountInput.value);
+
+      if (description && amount > 0) {
+        entries.push({ type, description, amount });
+        updateSummary();
+
+        // Clear form inputs except type
+        descriptionInput.value = '';
+        amountInput.value = '';
+      }
+    });
+
+    checkGoalBtn.addEventListener('click', () => {
+      const goal = parseFloat(goalAmountInput.value);
+      const current = parseFloat(currentSavingsInput.value);
+
+      if (isNaN(goal) || goal <= 0) {
+        goalStatus.textContent = 'Please enter a valid goal amount.';
+        return;
+      }
+
+      if (isNaN(current) || current < 0) {
+        goalStatus.textContent = 'Please enter a valid current savings amount.';
+        return;
+      }
+
+      if (current >= goal) {
+        goalStatus.textContent = `Congrats! You reached your savings goal of $${goal.toFixed(2)}. 🎉`;
+      } else {
+        const remaining = goal - current;
+        goalStatus.textContent = `You need $${remaining.toFixed(2)} more to reach your goal. Keep saving!`;
+      }
+    });
+
+  </script>
+
+</body>
+</html>
